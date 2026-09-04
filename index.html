@@ -15,11 +15,7 @@
             --accent-hover: #1ed760;
             --error: #f15e6c;
         }
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             font-family: 'Segoe UI', -apple-system, BlinkMacSystemFont, sans-serif;
             background: var(--bg);
@@ -35,7 +31,7 @@
             border-radius: 16px;
             padding: 40px;
             width: 100%;
-            max-width: 600px;
+            max-width: 700px;
             box-shadow: 0 8px 32px rgba(0,0,0,0.4);
         }
         .logo {
@@ -45,24 +41,15 @@
             margin-bottom: 30px;
             justify-content: center;
         }
-        .logo svg {
-            width: 40px;
-            height: 40px;
-        }
-        h1 {
-            font-size: 1.8em;
-            font-weight: 700;
-            text-align: center;
-        }
+        .logo svg { width: 40px; height: 40px; }
+        h1 { font-size: 1.8em; font-weight: 700; text-align: center; }
         .subtitle {
             text-align: center;
             color: var(--text2);
             margin-bottom: 30px;
             font-size: 0.95em;
         }
-        .input-group {
-            margin-bottom: 20px;
-        }
+        .input-group { margin-bottom: 20px; }
         label {
             display: block;
             font-size: 0.85em;
@@ -80,13 +67,8 @@
             font-size: 1em;
             transition: border-color 0.3s;
         }
-        input[type="text"]:focus {
-            outline: none;
-            border-color: var(--accent);
-        }
-        input[type="text"]::placeholder {
-            color: #6a6a6a;
-        }
+        input[type="text"]:focus { outline: none; border-color: var(--accent); }
+        input[type="text"]::placeholder { color: #6a6a6a; }
         .btn {
             width: 100%;
             padding: 16px;
@@ -99,17 +81,9 @@
             cursor: pointer;
             transition: background 0.3s, transform 0.1s;
         }
-        .btn:hover {
-            background: var(--accent-hover);
-        }
-        .btn:active {
-            transform: scale(0.98);
-        }
-        .btn:disabled {
-            background: #555;
-            color: #999;
-            cursor: not-allowed;
-        }
+        .btn:hover { background: var(--accent-hover); }
+        .btn:active { transform: scale(0.98); }
+        .btn:disabled { background: #555; color: #999; cursor: not-allowed; }
         .status {
             margin-top: 20px;
             padding: 15px;
@@ -117,19 +91,11 @@
             display: none;
             font-size: 0.9em;
         }
-        .status.info {
-            display: block;
-            background: #1a3a2a;
-            color: var(--accent);
-        }
-        .status.error {
-            display: block;
-            background: #3a1a1a;
-            color: var(--error);
-        }
+        .status.info { display: block; background: #1a3a2a; color: var(--accent); }
+        .status.error { display: block; background: #3a1a1a; color: var(--error); }
         .track-list {
             margin-top: 20px;
-            max-height: 300px;
+            max-height: 400px;
             overflow-y: auto;
             background: var(--surface2);
             border-radius: 8px;
@@ -143,19 +109,9 @@
             border-bottom: 1px solid #3e3e3e;
             font-size: 0.85em;
         }
-        .track-item:last-child {
-            border-bottom: none;
-        }
-        .track-item .index {
-            color: var(--text2);
-            min-width: 25px;
-        }
-        .track-item .title {
-            flex: 1;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
+        .track-item:last-child { border-bottom: none; }
+        .track-item .index { color: var(--text2); min-width: 25px; }
+        .track-item .title { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .track-item .dl-btn {
             padding: 5px 12px;
             background: var(--accent);
@@ -166,9 +122,7 @@
             font-size: 0.8em;
             font-weight: 600;
         }
-        .track-item .dl-btn:hover {
-            background: var(--accent-hover);
-        }
+        .track-item .dl-btn:hover { background: var(--accent-hover); }
         .progress-bar {
             width: 100%;
             height: 6px;
@@ -226,6 +180,7 @@
     <script>
         let playlistTracks = [];
         let playlistName = 'playlist';
+        let currentAudioBlob = null;
         
         // Fonction pour extraire l'ID de la playlist depuis l'URL
         function extractPlaylistId(url) {
@@ -242,136 +197,314 @@
             return null;
         }
         
-        // Fonction pour récupérer les données de la playlist
-        async function fetchPlaylist(playlistId) {
-            const token = await getSpotifyToken();
-            const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
+        // Récupérer les données de la playlist via l'API publique de Spotify
+        async function fetchPlaylistData(playlistId) {
+            try {
+                // Essayer l'API publique sans token
+                const response = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (response.status === 401 || response.status === 403) {
+                    // Besoin d'un token, essayer de l'obtenir
+                    const token = await getSpotifyToken();
+                    const authResponse = await fetch(`https://api.spotify.com/v1/playlists/${playlistId}`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Accept': 'application/json'
+                        }
+                    });
+                    
+                    if (!authResponse.ok) throw new Error(`Erreur API Spotify: ${authResponse.status}`);
+                    return await authResponse.json();
                 }
-            });
-            if (!response.ok) throw new Error(`Erreur API Spotify: ${response.status}`);
-            const data = await response.json();
+                
+                if (!response.ok) throw new Error(`Erreur API Spotify: ${response.status}`);
+                return await response.json();
+            } catch (error) {
+                // Fallback: utiliser l'API embed
+                const embedResponse = await fetch(`https://open.spotify.com/embed/playlist/${playlistId}`);
+                if (embedResponse.ok) {
+                    const html = await embedResponse.text();
+                    // Extraire les données JSON de l'embed
+                    const jsonMatch = html.match(/<script id="__NEXT_DATA__" type="application\/json">(.*?)<\/script>/s);
+                    if (jsonMatch && jsonMatch[1]) {
+                        const data = JSON.parse(jsonMatch[1]);
+                        const playlistData = data.props?.pageProps?.playlist;
+                        if (playlistData) return playlistData;
+                    }
+                }
+                throw error;
+            }
+        }
+        
+        // Obtenir un token Spotify public
+        async function getSpotifyToken() {
+            try {
+                const response = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player');
+                if (!response.ok) throw new Error('Impossible d\'obtenir le token');
+                const data = await response.json();
+                return data.accessToken;
+            } catch (e) {
+                // Fallback: récupérer depuis la page d'accueil
+                const htmlResponse = await fetch('https://open.spotify.com/');
+                const html = await htmlResponse.text();
+                const tokenMatch = html.match(/"accessToken":"([a-zA-Z0-9_-]+)"/);
+                if (tokenMatch && tokenMatch[1]) {
+                    return tokenMatch[1];
+                }
+                throw new Error('Token Spotify introuvable');
+            }
+        }
+        
+        // Récupérer la playlist
+        async function fetchPlaylist(playlistId) {
+            const data = await fetchPlaylistData(playlistId);
             
             playlistName = data.name || 'playlist';
             playlistTracks = [];
             
-            let nextUrl = data.tracks.next;
-            let tracks = data.tracks.items;
+            let tracks;
+            if (data.tracks && data.tracks.items) {
+                tracks = data.tracks.items;
+            } else if (data.items) {
+                tracks = data.items;
+            } else {
+                throw new Error('Format de playlist non reconnu');
+            }
             
-            // Traiter la première page
+            // Traiter les pistes
             for (const item of tracks) {
-                if (item.track && item.track.name) {
+                const track = item.track || item;
+                if (track && track.name) {
                     playlistTracks.push({
-                        name: item.track.name,
-                        artist: item.track.artists.map(a => a.name).join(', '),
-                        duration: item.track.duration_ms,
-                        album: item.track.album.name
+                        name: track.name,
+                        artist: track.artists ? track.artists.map(a => a.name).join(', ') : (track.artist || 'Artiste inconnu'),
+                        duration: track.duration_ms || 0,
+                        album: track.album ? track.album.name : ''
                     });
                 }
             }
             
-            // Récupérer les pages suivantes
-            while (nextUrl) {
-                const pageResponse = await fetch(nextUrl, {
-                    headers: {
-                        'Authorization': `Bearer ${token}`
+            // Gérer la pagination
+            if (data.tracks && data.tracks.next) {
+                let nextUrl = data.tracks.next;
+                while (nextUrl) {
+                    const token = await getSpotifyToken();
+                    const pageResponse = await fetch(nextUrl, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    const pageData = await pageResponse.json();
+                    
+                    for (const item of pageData.items) {
+                        if (item.track && item.track.name) {
+                            playlistTracks.push({
+                                name: item.track.name,
+                                artist: item.track.artists.map(a => a.name).join(', '),
+                                duration: item.track.duration_ms,
+                                album: item.track.album.name
+                            });
+                        }
                     }
-                });
-                const pageData = await pageResponse.json();
-                
-                for (const item of pageData.items) {
-                    if (item.track && item.track.name) {
-                        playlistTracks.push({
-                            name: item.track.name,
-                            artist: item.track.artists.map(a => a.name).join(', '),
-                            duration: item.track.duration_ms,
-                            album: item.track.album.name
-                        });
-                    }
+                    nextUrl = pageData.next;
                 }
-                nextUrl = pageData.next;
             }
             
             return playlistTracks;
         }
         
-        // Obtenir un token Spotify public (sans client ID)
-        async function getSpotifyToken() {
-            const response = await fetch('https://open.spotify.com/get_access_token?reason=transport&productType=web_player');
-            if (!response.ok) throw new Error('Impossible d\'obtenir le token Spotify');
-            const data = await response.json();
-            return data.accessToken;
+        // Rechercher sur YouTube et obtenir l'URL audio
+        async function searchAndGetAudioUrl(query) {
+            // Méthode 1: Utiliser l'API de recherche YouTube
+            const videoId = await searchYouTube(query);
+            if (!videoId) throw new Error('Vidéo non trouvée');
+            
+            // Obtenir l'URL audio via plusieurs services
+            return await getAudioUrl(videoId);
         }
         
-        // Rechercher une piste sur YouTube (via l'API publique de recherche)
+        // Recherche YouTube
         async function searchYouTube(query) {
-            const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query + ' audio')}`;
-            const response = await fetch(searchUrl);
-            const html = await response.text();
-            
-            // Extraire les IDs des vidéos depuis le HTML
-            const videoIds = [];
-            const regex = /"videoId":"([a-zA-Z0-9_-]{11})"/g;
-            let match;
-            while ((match = regex.exec(html)) !== null) {
-                if (!videoIds.includes(match[1])) {
-                    videoIds.push(match[1]);
-                    if (videoIds.length >= 1) break;
-                }
-            }
-            
-            if (videoIds.length === 0) {
-                // Fallback: essayer une autre méthode d'extraction
-                const regex2 = /\/watch\?v=([a-zA-Z0-9_-]{11})/g;
-                while ((match = regex2.exec(html)) !== null) {
-                    if (!videoIds.includes(match[1])) {
-                        videoIds.push(match[1]);
-                        if (videoIds.length >= 1) break;
+            // Essayer plusieurs méthodes de recherche
+            const methods = [
+                // Méthode 1: API de suggestion YouTube
+                async () => {
+                    const response = await fetch(`https://suggestqueries.google.com/complete/search?client=youtube&ds=yt&q=${encodeURIComponent(query)}`);
+                    const data = await response.json();
+                    if (data && data[1] && data[1].length > 0) {
+                        // Rechercher la vidéo réelle
+                        const searchResponse = await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(query + ' official audio')}`);
+                        const html = await searchResponse.text();
+                        const videoIds = [];
+                        const regex = /"videoId":"([a-zA-Z0-9_-]{11})"/g;
+                        let match;
+                        while ((match = regex.exec(html)) !== null) {
+                            if (!videoIds.includes(match[1])) {
+                                videoIds.push(match[1]);
+                                if (videoIds.length >= 1) break;
+                            }
+                        }
+                        return videoIds[0] || null;
                     }
+                    return null;
+                },
+                // Méthode 2: Recherche directe
+                async () => {
+                    const response = await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(query + ' audio')}`);
+                    const html = await response.text();
+                    const videoIds = [];
+                    const regex = /"videoId":"([a-zA-Z0-9_-]{11})"/g;
+                    let match;
+                    while ((match = regex.exec(html)) !== null) {
+                        if (!videoIds.includes(match[1])) {
+                            videoIds.push(match[1]);
+                            if (videoIds.length >= 1) break;
+                        }
+                    }
+                    return videoIds[0] || null;
+                },
+                // Méthode 3: Extraction alternative
+                async () => {
+                    const response = await fetch(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}`);
+                    const html = await response.text();
+                    const regex = /\/watch\?v=([a-zA-Z0-9_-]{11})/g;
+                    const videoIds = [];
+                    let match;
+                    while ((match = regex.exec(html)) !== null) {
+                        if (!videoIds.includes(match[1])) {
+                            videoIds.push(match[1]);
+                            if (videoIds.length >= 1) break;
+                        }
+                    }
+                    return videoIds[0] || null;
+                }
+            ];
+            
+            for (const method of methods) {
+                try {
+                    const result = await method();
+                    if (result) return result;
+                } catch (e) {
+                    continue;
                 }
             }
             
-            return videoIds[0] || null;
+            return null;
         }
         
-        // Télécharger l'audio depuis YouTube
-        async function downloadFromYouTube(videoId) {
-            // Utiliser un service de conversion public
+        // Obtenir l'URL audio depuis un service de conversion
+        async function getAudioUrl(videoId) {
             const services = [
-                `https://api.mp3convert.io/v1/convert?video_id=${videoId}`,
-                `https://yt-api.com/api/v1/download?id=${videoId}`,
-                `https://co.wuk.sh/api/json?url=https://www.youtube.com/watch?v=${videoId}`
+                {
+                    name: 'co.wuk.sh',
+                    url: `https://co.wuk.sh/api/json?url=https://www.youtube.com/watch?v=${videoId}`,
+                    extract: (data) => data.url || data.download_url || data.link
+                },
+                {
+                    name: 'api.vevioz.com',
+                    url: `https://api.vevioz.com/api/button/mp3/${videoId}`,
+                    extract: (data) => data.link || data.url || data.download_url
+                },
+                {
+                    name: 'yt-api.com',
+                    url: `https://yt-api.com/api/v1/download?id=${videoId}`,
+                    extract: (data) => data.url || data.download_url || data.link || data.audio_url
+                }
             ];
             
             for (const service of services) {
                 try {
-                    const response = await fetch(service);
+                    const response = await fetch(service.url);
                     if (response.ok) {
                         const data = await response.json();
-                        if (data.url || data.download_url || data.link) {
-                            return data.url || data.download_url || data.link;
-                        }
+                        const url = service.extract(data);
+                        if (url) return url;
                     }
                 } catch (e) {
                     continue;
                 }
             }
             
-            // Fallback: utiliser un service différent
+            // Méthode alternative: utiliser l'API invidious
             try {
-                const response = await fetch(`https://api.vevioz.com/api/button/mp3/${videoId}`);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.link || data.url) {
-                        return data.link || data.url;
+                const invidiousResponse = await fetch(`https://inv.nadeko.net/api/v1/videos/${videoId}`);
+                if (invidiousResponse.ok) {
+                    const data = await invidiousResponse.json();
+                    if (data.adaptiveFormats) {
+                        const audioFormat = data.adaptiveFormats.find(f => f.type && f.type.includes('audio'));
+                        if (audioFormat && audioFormat.url) {
+                            return audioFormat.url;
+                        }
                     }
                 }
             } catch (e) {
-                // Ignorer les erreurs de fallback
+                // Ignorer
             }
             
-            throw new Error('Impossible de trouver un service de conversion disponible');
+            // Méthode alternative: utiliser l'API piped
+            try {
+                const pipedResponse = await fetch(`https://pipedapi.kavin.rocks/streams/${videoId}`);
+                if (pipedResponse.ok) {
+                    const data = await pipedResponse.json();
+                    if (data.audioStreams && data.audioStreams.length > 0) {
+                        return data.audioStreams[0].url;
+                    }
+                }
+            } catch (e) {
+                // Ignorer
+            }
+            
+            throw new Error('Aucun service de conversion disponible');
+        }
+        
+        // Télécharger l'audio
+        async function downloadAudio(url, filename) {
+            try {
+                const response = await fetch(url, {
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'audio/*'
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Erreur de téléchargement: ${response.status}`);
+                }
+                
+                const blob = await response.blob();
+                return blob;
+            } catch (error) {
+                // Essayer avec un proxy CORS
+                try {
+                    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+                    const proxyResponse = await fetch(proxyUrl);
+                    if (proxyResponse.ok) {
+                        const blob = await proxyResponse.blob();
+                        return blob;
+                    }
+                } catch (proxyError) {
+                    // Ignorer
+                }
+                
+                throw new Error('Impossible de télécharger l\'audio (CORS)');
+            }
+        }
+        
+        // Fonction pour télécharger un blob
+        function downloadBlob(blob, filename) {
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
         
         // Fonction principale pour récupérer et afficher la playlist
@@ -442,22 +575,12 @@
             status.textContent = `Recherche de "${track.name} - ${track.artist}"...`;
             
             try {
-                const videoId = await searchYouTube(`${track.name} ${track.artist}`);
-                if (!videoId) {
-                    throw new Error('Vidéo non trouvée');
-                }
+                const audioUrl = await searchAndGetAudioUrl(`${track.name} ${track.artist}`);
                 
-                status.textContent = `Conversion de "${track.name}"...`;
-                const downloadUrl = await downloadFromYouTube(videoId);
+                status.textContent = `Téléchargement de "${track.name}"...`;
+                const blob = await downloadAudio(audioUrl, `${track.name} - ${track.artist}.mp3`);
                 
-                // Télécharger le fichier
-                const a = document.createElement('a');
-                a.href = downloadUrl;
-                a.download = `${track.name} - ${track.artist}.mp3`;
-                a.target = '_blank';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                downloadBlob(blob, `${track.name} - ${track.artist}.mp3`);
                 
                 status.textContent = `"${track.name}" téléchargé !`;
                 status.className = 'status info';
@@ -488,41 +611,34 @@
             try {
                 const zip = new JSZip();
                 const folder = zip.folder(playlistName);
+                let successCount = 0;
                 
                 for (let i = 0; i < playlistTracks.length; i++) {
                     const track = playlistTracks[i];
                     status.textContent = `Traitement ${i + 1}/${playlistTracks.length} : ${track.name}`;
-                    progressFill.style.width = `${(i / playlistTracks.length) * 100}%`;
+                    progressFill.style.width = `${(i / playlistTracks.length) * 90}%`;
                     
                     try {
-                        const videoId = await searchYouTube(`${track.name} ${track.artist}`);
-                        if (!videoId) continue;
+                        const audioUrl = await searchAndGetAudioUrl(`${track.name} ${track.artist}`);
+                        const blob = await downloadAudio(audioUrl, `${track.name} - ${track.artist}.mp3`);
+                        folder.file(`${track.name} - ${track.artist}.mp3`, blob);
+                        successCount++;
                         
-                        const downloadUrl = await downloadFromYouTube(videoId);
-                        const audioResponse = await fetch(downloadUrl);
-                        const audioBlob = await audioResponse.blob();
-                        
-                        folder.file(`${track.name} - ${track.artist}.mp3`, audioBlob);
+                        // Petite pause pour éviter de surcharger les API
+                        await new Promise(resolve => setTimeout(resolve, 500));
                     } catch (e) {
                         console.warn(`Échec pour ${track.name}: ${e.message}`);
                     }
                 }
                 
                 progressFill.style.width = '95%';
-                status.textContent = 'Création du fichier ZIP...';
+                status.textContent = `Création du fichier ZIP (${successCount}/${playlistTracks.length} pistes)...`;
                 
                 const zipBlob = await zip.generateAsync({type: 'blob'});
-                const url = URL.createObjectURL(zipBlob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${playlistName}.zip`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
+                downloadBlob(zipBlob, `${playlistName}.zip`);
                 
                 progressFill.style.width = '100%';
-                status.textContent = 'Téléchargement complet !';
+                status.textContent = `Téléchargement terminé ! ${successCount} pistes sur ${playlistTracks.length}`;
                 status.className = 'status info';
                 
                 setTimeout(() => {
